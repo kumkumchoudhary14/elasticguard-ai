@@ -1,0 +1,22 @@
+#!/bin/bash
+set -e
+
+echo "🚀 ElasticGuard AI — Codespace Setup"
+echo "======================================"
+echo ""
+echo "Your Codespace is ready! To start the full stack:"
+echo ""
+echo "  docker-compose up --build"
+echo ""
+echo "Then open the forwarded ports:"
+echo "  🖥️  Port 8000 → ElasticGuard AI Dashboard"
+echo "  📊 Port 5601 → Kibana"
+echo ""
+echo "To seed IoT data (in a second terminal):"
+echo "  python iot_simulator.py"
+echo ""
+echo "To run anomaly detection:"
+echo "  python anomaly_detector.py"
+echo ""
+echo "======================================"
+echo "Happy hacking! 🎉"

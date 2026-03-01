@@ -1,0 +1,64 @@
+name: CI — ElasticGuard AI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd "curl -f http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Wait for Elasticsearch
+        run: |
+          until curl -s http://localhost:9200/_cluster/health | grep -q '"status"'; do
+            echo "Waiting for Elasticsearch..."
+            sleep 5
+          done
+          echo "Elasticsearch is ready!"
+
+      - name: Setup Elasticsearch indices
+        run: python setup_elasticsearch.py
+        env:
+          ELASTICSEARCH_URL: http://localhost:9200
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+        env:
+          ELASTICSEARCH_URL: http://localhost:9200
+
+      - name: Test API startup
+        run: |
+          ELASTICSEARCH_URL=http://localhost:9200 uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+          curl -f http://localhost:8000/api/health || exit 1
+          echo "API is healthy! ✅"
