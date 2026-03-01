@@ -65,7 +65,7 @@ Modern IoT deployments generate massive volumes of security telemetry — access
 | 🔍 **Powerful Search** | Full-text, filtered, and advanced DSL search via FastAPI |
 | 📊 **Analytics API** | Timeline, severity distribution, device stats, top threats |
 | 🖥️ **Real-time Dashboard** | Dark-themed SPA with Chart.js, auto-refresh every 5s |
-| 🐳 **One-command Deploy** | `docker-compose up --build` — zero additional setup |
+| 🐳 **One-command Deploy** | `docker compose up --build` — zero additional setup |
 
 ---
 
@@ -86,7 +86,7 @@ cd elasticguard-ai
 cp .env.example .env
 
 # 3. Start all services
-docker-compose up --build
+docker compose up --build
 ```
 
 ### Access Services
