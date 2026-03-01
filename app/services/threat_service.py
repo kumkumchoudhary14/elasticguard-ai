@@ -67,9 +67,6 @@ class ThreatService:
     async def trigger_analysis(self) -> dict[str, Any]:
         """Trigger a fresh anomaly detection cycle."""
         try:
-            import sys
-            import os
-            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
             from anomaly_detector import run_detection_cycle
             es = get_es_client()
             count = await run_detection_cycle(es)

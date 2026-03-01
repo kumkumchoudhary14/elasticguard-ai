@@ -236,7 +236,8 @@ async def ingest_batch(es: AsyncElasticsearch, events: list[dict[str, Any]]) -> 
     response = await es.bulk(body=body)
     if response.get("errors"):
         errors = [item for item in response["items"] if item.get("index", {}).get("error")]
-        logger.warning(f"Bulk ingestion had {len(errors)} errors")
+        sample = errors[0]["index"]["error"] if errors else {}
+        logger.warning(f"Bulk ingestion had {len(errors)} errors. Sample: {sample}")
     else:
         logger.info(f"Ingested {len(events)} events successfully")
 

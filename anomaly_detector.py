@@ -27,6 +27,8 @@ CHECK_INTERVAL = int(os.getenv("ANOMALY_CHECK_INTERVAL", "30"))
 FEATURE_FIELDS = ["cpu_usage", "memory_usage", "temperature", "network_in", "network_out"]
 ZSCORE_THRESHOLD = 3.0
 ISOLATION_CONTAMINATION = 0.1
+# Z-scores typically range 3–30+; scale by 10 to map into the 0–100 scoring range
+ZSCORE_SCALE_FACTOR = 10
 
 
 def compute_zscore(values: np.ndarray) -> np.ndarray:
@@ -197,8 +199,7 @@ async def run_detection_cycle(es: AsyncElasticsearch) -> int:
     zscore_anomalies = detect_zscore_anomalies(events)
     for idx, score, metric in zscore_anomalies:
         if idx not in detected or score > detected[idx].get("anomaly_score", 0):
-            # Scale Z-score (typically 3-10+) to 0-100 range for consistent scoring
-            detected[idx] = classify_anomaly(events[idx], score * 10, metric)
+            detected[idx] = classify_anomaly(events[idx], score * ZSCORE_SCALE_FACTOR, metric)
 
     if_anomalies = detect_isolation_forest_anomalies(events)
     for idx, score in if_anomalies:
