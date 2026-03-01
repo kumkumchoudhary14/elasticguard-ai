@@ -33,7 +33,7 @@ LOCATIONS = [
 ]
 
 # IP ranges for simulation
-IP_RANGES = ["10.1.", "10.2.", "192.168.1.", "192.168.2.", "172.16.0.", "172.16.1."]
+IP_RANGES = ["10.1.0.", "10.2.0.", "192.168.1.", "192.168.2.", "172.16.0.", "172.16.1."]
 
 DEVICE_TYPES = ["temperature_sensor", "security_camera", "access_controller", "network_switch"]
 
