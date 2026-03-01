@@ -1,6 +1,7 @@
 """Elasticsearch search logic."""
 import logging
 from typing import Any, Optional
+import app.elasticsearch_client as ec
 from app.elasticsearch_client import get_es_client, build_time_range_filter
 from app.config import settings
 
@@ -19,6 +20,12 @@ class SearchService:
         time_range: str = "24h",
         size: int = 20,
     ) -> dict[str, Any]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            return mock_data_service.search(
+                query=query, severity=severity, device_type=device_type,
+                time_range=time_range, size=size,
+            )
         es = get_es_client()
         must = [build_time_range_filter(time_range)]
         if query:
@@ -45,6 +52,10 @@ class SearchService:
             return {"total": 0, "events": [], "error": str(e)}
 
     async def advanced_search(self, query: str = "*", time_range: str = "24h", size: int = 20) -> dict[str, Any]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            q = "" if query == "*" else query
+            return mock_data_service.search(query=q, time_range=time_range, size=size)
         es = get_es_client()
         body = {
             "query": {
@@ -70,6 +81,9 @@ class SearchService:
             return {"total": 0, "events": [], "error": str(e)}
 
     async def get_latest(self, size: int = 20, severity: Optional[str] = None) -> dict[str, Any]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            return mock_data_service.get_latest(size=size, severity=severity)
         es = get_es_client()
         must: list[Any] = []
         if severity:

@@ -1,6 +1,7 @@
 """Threat detection service logic."""
 import logging
 from typing import Any, Optional
+import app.elasticsearch_client as ec
 from app.elasticsearch_client import get_es_client
 from app.config import settings
 from threat_intelligence import generate_threat_summary, generate_landscape_summary
@@ -15,6 +16,9 @@ class ThreatService:
         resolved: bool = False,
         size: int = 20,
     ) -> dict[str, Any]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            return mock_data_service.list_threats(severity=severity, resolved=resolved, size=size)
         es = get_es_client()
         must: list[Any] = [{"term": {"resolved": resolved}}]
         if severity:
@@ -37,6 +41,12 @@ class ThreatService:
             return {"total": 0, "threats": [], "error": str(e)}
 
     async def get_threat(self, threat_id: str) -> Optional[dict[str, Any]]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            result = mock_data_service.get_threat(threat_id)
+            if result:
+                return {**result, "ai_summary": f"Mock threat: {result['description']}"}
+            return None
         es = get_es_client()
         try:
             resp = await es.get(index=settings.anomaly_index, id=threat_id)
@@ -50,6 +60,9 @@ class ThreatService:
             return None
 
     async def get_landscape_summary(self) -> dict[str, Any]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            return mock_data_service.get_landscape_summary()
         es = get_es_client()
         body = {
             "query": {"term": {"resolved": False}},
