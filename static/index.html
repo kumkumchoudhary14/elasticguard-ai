@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ElasticGuard AI — Security Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: #0f172a; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; }
+    .badge-critical { background: #7f1d1d; color: #fca5a5; }
+    .badge-high     { background: #78350f; color: #fcd34d; }
+    .badge-medium   { background: #1e3a5f; color: #93c5fd; }
+    .badge-low      { background: #14532d; color: #86efac; }
+    .severity-dot-critical { background: #ef4444; }
+    .severity-dot-high     { background: #f59e0b; }
+    .severity-dot-medium   { background: #3b82f6; }
+    .severity-dot-low      { background: #22c55e; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.5 } }
+    .fade-in { animation: fadeIn 0.5s ease-in; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:none } }
+  </style>
+</head>
+<body class="min-h-screen">
+
+<!-- Header -->
+<header class="sticky top-0 z-50 border-b border-slate-700" style="background:#0f172a">
+  <div class="max-w-screen-2xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white text-sm"
+           style="background: linear-gradient(135deg,#6366f1,#0ea5e9)">EG</div>
+      <div>
+        <h1 class="text-lg font-bold text-white leading-none">ElasticGuard AI</h1>
+        <p class="text-xs text-slate-400">Security Observability Platform</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div id="connectionStatus" class="flex items-center gap-2 text-xs">
+        <span id="statusDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+        <span id="statusText" class="text-slate-400">Connecting...</span>
+      </div>
+      <div class="text-xs text-slate-400 font-mono" id="clock">--:--:--</div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-screen-2xl mx-auto px-4 py-6 space-y-6">
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Events</span>
+        <span class="text-indigo-400 text-lg">📊</span>
+      </div>
+      <div id="statTotalEvents" class="text-3xl font-bold text-white">—</div>
+      <div class="text-xs text-slate-500 mt-1">Last 24 hours</div>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Active Threats</span>
+        <span class="text-orange-400 text-lg">🔥</span>
+      </div>
+      <div id="statActiveThreats" class="text-3xl font-bold text-orange-400">—</div>
+      <div class="text-xs text-slate-500 mt-1">Unresolved anomalies</div>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Critical Alerts</span>
+        <span class="text-red-400 text-lg">🚨</span>
+      </div>
+      <div id="statCritical" class="text-3xl font-bold text-red-400">—</div>
+      <div class="text-xs text-slate-500 mt-1">Requires immediate action</div>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Active Devices</span>
+        <span class="text-green-400 text-lg">📡</span>
+      </div>
+      <div id="statDevices" class="text-3xl font-bold text-green-400">—</div>
+      <div class="text-xs text-slate-500 mt-1">IoT devices reporting</div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Timeline -->
+    <div class="card p-5 lg:col-span-2">
+      <h2 class="text-sm font-semibold text-slate-200 mb-4">Event Timeline</h2>
+      <canvas id="timelineChart" height="120"></canvas>
+    </div>
+    <!-- Severity Donut -->
+    <div class="card p-5">
+      <h2 class="text-sm font-semibold text-slate-200 mb-4">Severity Distribution</h2>
+      <canvas id="severityChart" height="160"></canvas>
+      <div id="severityLegend" class="mt-3 space-y-1"></div>
+    </div>
+  </div>
+
+  <!-- Threats + Search Row -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Top Threats Bar -->
+    <div class="card p-5">
+      <h2 class="text-sm font-semibold text-slate-200 mb-4">Top Event Types</h2>
+      <canvas id="threatChart" height="200"></canvas>
+    </div>
+
+    <!-- Search Panel -->
+    <div class="card p-5 lg:col-span-2">
+      <h2 class="text-sm font-semibold text-slate-200 mb-4">Search Events</h2>
+      <div class="flex flex-col sm:flex-row gap-2 mb-4">
+        <input id="searchInput" type="text" placeholder="Search events, devices, locations..."
+               class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"/>
+        <select id="filterSeverity"
+                class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+          <option value="">All Severities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <select id="filterDeviceType"
+                class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+          <option value="">All Device Types</option>
+          <option value="temperature_sensor">Temperature Sensor</option>
+          <option value="security_camera">Security Camera</option>
+          <option value="access_controller">Access Controller</option>
+          <option value="network_switch">Network Switch</option>
+        </select>
+        <button id="searchBtn" onclick="doSearch()"
+                class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          Search
+        </button>
+      </div>
+      <div id="searchResults" class="overflow-auto max-h-48">
+        <p class="text-slate-500 text-xs text-center py-4">Enter a query or select a filter and click Search</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Events Feed + Threat Alerts -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Live Events Table -->
+    <div class="card p-5 lg:col-span-2">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-slate-200">Live Events Feed</h2>
+        <span class="flex items-center gap-1 text-xs text-green-400">
+          <span class="w-2 h-2 rounded-full bg-green-400 pulse"></span>Live
+        </span>
+      </div>
+      <div class="overflow-auto max-h-72">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-left text-slate-500 border-b border-slate-700">
+              <th class="pb-2 pr-3">Time</th>
+              <th class="pb-2 pr-3">Device</th>
+              <th class="pb-2 pr-3">Type</th>
+              <th class="pb-2 pr-3">Severity</th>
+              <th class="pb-2">Message</th>
+            </tr>
+          </thead>
+          <tbody id="eventsTableBody" class="divide-y divide-slate-800"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Threat Alerts Panel -->
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-slate-200">Active Threats</h2>
+        <span id="threatCount" class="bg-red-900 text-red-300 text-xs px-2 py-0.5 rounded-full">0</span>
+      </div>
+      <div id="threatsList" class="space-y-2 overflow-auto max-h-72">
+        <p class="text-slate-500 text-xs text-center py-4">No active threats detected</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API = '';
+let timelineChart, severityChart, threatChart;
+let isConnected = false;
+
+// Clock
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-SG');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// Connection status
+function setStatus(ok) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  isConnected = ok;
+  dot.className = `w-2 h-2 rounded-full ${ok ? 'bg-green-400' : 'bg-red-500 pulse'}`;
+  txt.textContent = ok ? 'Connected' : 'Disconnected';
+  txt.className = ok ? 'text-green-400' : 'text-red-400';
+}
+
+async function apiFetch(path) {
+  const resp = await fetch(API + path);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+// Severity helpers
+function severityBadge(s) {
+  const classes = { critical:'badge-critical', high:'badge-high', medium:'badge-medium', low:'badge-low' };
+  return `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold ${classes[s]||'badge-low'}">${s}</span>`;
+}
+function severityDotClass(s) {
+  return { critical:'severity-dot-critical', high:'severity-dot-high', medium:'severity-dot-medium', low:'severity-dot-low' }[s] || 'severity-dot-low';
+}
+
+// Init Charts
+function initCharts() {
+  const gridColor = '#1e293b';
+  const textColor = '#94a3b8';
+
+  timelineChart = new Chart(document.getElementById('timelineChart'), {
+    type: 'line',
+    data: { labels: [], datasets: [{
+      label: 'Events', data: [],
+      borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)',
+      borderWidth: 2, fill: true, tension: 0.4, pointRadius: 2,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor, maxTicksLimit: 8, font:{size:10} }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor } },
+      },
+    },
+  });
+
+  severityChart = new Chart(document.getElementById('severityChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Critical','High','Medium','Low'],
+      datasets: [{ data: [0,0,0,0],
+        backgroundColor: ['#ef4444','#f59e0b','#3b82f6','#22c55e'],
+        borderColor: '#0f172a', borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      cutout: '70%',
+    },
+  });
+
+  threatChart = new Chart(document.getElementById('threatChart'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{
+      label: 'Count', data: [],
+      backgroundColor: 'rgba(99,102,241,0.7)',
+      borderColor: '#6366f1', borderWidth: 1, borderRadius: 4,
+    }]},
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor, font:{size:10} }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor, font:{size:9} }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+// Update overview stats
+async function updateOverview() {
+  const data = await apiFetch('/api/analytics/overview');
+  document.getElementById('statTotalEvents').textContent = (data.total_events||0).toLocaleString();
+  document.getElementById('statCritical').textContent = (data.critical_alerts||0).toLocaleString();
+  document.getElementById('statDevices').textContent = (data.active_devices||0).toLocaleString();
+
+  // Severity chart
+  const d = severityChart.data.datasets[0];
+  d.data = [data.critical_alerts||0, data.high_alerts||0, data.medium_alerts||0, data.low_alerts||0];
+  severityChart.update();
+
+  // Legend
+  const total = d.data.reduce((a,b)=>a+b,0);
+  const labels = ['Critical','High','Medium','Low'];
+  const colors = ['#ef4444','#f59e0b','#3b82f6','#22c55e'];
+  document.getElementById('severityLegend').innerHTML = labels.map((l,i) =>
+    `<div class="flex items-center justify-between text-xs">
+      <div class="flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-sm" style="background:${colors[i]}"></span>
+        <span class="text-slate-400">${l}</span>
+      </div>
+      <span class="text-white font-medium">${d.data[i]}</span>
+    </div>`
+  ).join('');
+}
+
+// Update timeline
+async function updateTimeline() {
+  const data = await apiFetch('/api/analytics/timeline?interval=1h&time_range=24h');
+  const timeline = data.timeline || [];
+  timelineChart.data.labels = timeline.map(t => {
+    const d = new Date(t.timestamp);
+    return d.toLocaleTimeString('en-SG', {hour:'2-digit', minute:'2-digit'});
+  });
+  timelineChart.data.datasets[0].data = timeline.map(t => t.count);
+  timelineChart.update();
+}
+
+// Update top threats
+async function updateTopThreats() {
+  const data = await apiFetch('/api/analytics/top-threats');
+  const threats = (data.top_threats || []).slice(0, 8);
+  threatChart.data.labels = threats.map(t => t.type.replace(/_/g,' '));
+  threatChart.data.datasets[0].data = threats.map(t => t.count);
+  threatChart.update();
+}
+
+// Update events feed
+async function updateEvents() {
+  const data = await apiFetch('/api/events/latest?size=25');
+  const events = data.events || [];
+  const tbody = document.getElementById('eventsTableBody');
+  tbody.innerHTML = events.map(e => {
+    const ts = new Date(e['@timestamp']||e.timestamp).toLocaleTimeString('en-SG');
+    const msg = (e.message||'').substring(0,60) + ((e.message||'').length > 60 ? '...' : '');
+    return `<tr class="fade-in hover:bg-slate-800/50 transition-colors">
+      <td class="py-1.5 pr-3 font-mono text-slate-400 whitespace-nowrap">${ts}</td>
+      <td class="py-1.5 pr-3 text-slate-300 whitespace-nowrap">${e.device_id||''}</td>
+      <td class="py-1.5 pr-3 text-slate-400 whitespace-nowrap">${(e.device_type||'').replace(/_/g,' ')}</td>
+      <td class="py-1.5 pr-3">${severityBadge(e.severity||'low')}</td>
+      <td class="py-1.5 text-slate-400 max-w-xs truncate">${msg}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Update threats list
+async function updateThreats() {
+  const data = await apiFetch('/api/threats?size=10');
+  const threats = data.threats || [];
+  document.getElementById('threatCount').textContent = data.total || 0;
+  document.getElementById('statActiveThreats').textContent = (data.total||0).toLocaleString();
+
+  if (threats.length === 0) {
+    document.getElementById('threatsList').innerHTML =
+      '<p class="text-slate-500 text-xs text-center py-4">No active threats detected ✓</p>';
+    return;
+  }
+  document.getElementById('threatsList').innerHTML = threats.map(t => `
+    <div class="bg-slate-800/60 rounded-lg p-3 fade-in">
+      <div class="flex items-start justify-between gap-2 mb-1">
+        <span class="text-xs font-semibold text-white truncate">${(t.threat_category||t.anomaly_type||'unknown').replace(/_/g,' ').toUpperCase()}</span>
+        ${severityBadge(t.severity||'medium')}
+      </div>
+      <div class="text-xs text-slate-400 truncate">${t.device_id||''} • ${t.location||''}</div>
+      <div class="text-xs text-slate-500 mt-0.5 truncate">${(t.description||'').substring(0,60)}…</div>
+    </div>
+  `).join('');
+}
+
+// Search
+async function doSearch() {
+  const q = document.getElementById('searchInput').value;
+  const severity = document.getElementById('filterSeverity').value;
+  const dtype = document.getElementById('filterDeviceType').value;
+  let url = `/api/search?q=${encodeURIComponent(q)}&size=10`;
+  if (severity) url += `&severity=${severity}`;
+  if (dtype) url += `&device_type=${dtype}`;
+
+  const container = document.getElementById('searchResults');
+  container.innerHTML = '<p class="text-slate-500 text-xs text-center py-4">Searching...</p>';
+
+  try {
+    const data = await apiFetch(url);
+    const events = data.events || [];
+    if (events.length === 0) {
+      container.innerHTML = '<p class="text-slate-500 text-xs text-center py-4">No results found</p>';
+      return;
+    }
+    container.innerHTML = `<p class="text-slate-400 text-xs mb-2">${data.total} results found</p>` +
+      events.map(e => {
+        const ts = new Date(e['@timestamp']||e.timestamp).toLocaleString('en-SG');
+        return `<div class="border-b border-slate-700 py-2 text-xs">
+          <div class="flex items-center gap-2 mb-0.5">
+            ${severityBadge(e.severity||'low')}
+            <span class="text-slate-300 font-medium">${e.device_id||''}</span>
+            <span class="text-slate-500">${ts}</span>
+          </div>
+          <div class="text-slate-400">${e.message||''}</div>
+        </div>`;
+      }).join('');
+  } catch {
+    container.innerHTML = '<p class="text-red-400 text-xs text-center py-4">Search failed — check connection</p>';
+  }
+}
+
+// Enter key on search
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+// Main refresh loop
+async function refresh() {
+  try {
+    await Promise.all([
+      updateOverview(),
+      updateTimeline(),
+      updateTopThreats(),
+      updateEvents(),
+      updateThreats(),
+    ]);
+    setStatus(true);
+  } catch(err) {
+    console.error('Refresh error:', err);
+    setStatus(false);
+  }
+}
+
+// Init
+initCharts();
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
