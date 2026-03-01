@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.elasticsearch_client import check_es_health, close_es_client
+from app.elasticsearch_client import check_es_connectivity, check_es_health, close_es_client
 from app.routes import health, search, analytics, threats
 
 logging.basicConfig(
@@ -21,11 +21,12 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     logger.info("Starting ElasticGuard AI...")
-    es_health = await check_es_health()
-    if es_health.get("status") in ("green", "yellow"):
+    reachable = await check_es_connectivity()
+    if reachable:
+        es_health = await check_es_health()
         logger.info(f"Elasticsearch connected: {es_health}")
     else:
-        logger.warning(f"Elasticsearch not healthy: {es_health}")
+        logger.info("Running in mock data mode — dashboard will show sample data")
     yield
     logger.info("Shutting down ElasticGuard AI...")
     await close_es_client()

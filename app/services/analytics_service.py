@@ -1,6 +1,7 @@
 """Analytics and aggregation logic."""
 import logging
 from typing import Any
+import app.elasticsearch_client as ec
 from app.elasticsearch_client import get_es_client, build_time_range_filter
 from app.config import settings
 
@@ -9,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 class AnalyticsService:
     async def get_overview(self, time_range: str = "24h") -> dict[str, Any]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            return mock_data_service.get_overview(time_range)
         es = get_es_client()
         time_filter = build_time_range_filter(time_range)
         body = {
@@ -39,6 +43,9 @@ class AnalyticsService:
                     "critical_alerts": 0, "high_alerts": 0, "medium_alerts": 0, "low_alerts": 0, "error": str(e)}
 
     async def get_timeline(self, time_range: str = "24h", interval: str = "1h") -> dict[str, Any]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            return mock_data_service.get_timeline(time_range, interval)
         es = get_es_client()
         time_filter = build_time_range_filter(time_range)
         body = {
@@ -65,6 +72,9 @@ class AnalyticsService:
             return {"timeline": [], "error": str(e)}
 
     async def get_top_threats(self, time_range: str = "24h") -> dict[str, Any]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            return mock_data_service.get_top_threats(time_range)
         es = get_es_client()
         time_filter = build_time_range_filter(time_range)
         body = {
@@ -83,6 +93,9 @@ class AnalyticsService:
             return {"top_threats": [], "error": str(e)}
 
     async def get_device_stats(self, time_range: str = "24h") -> dict[str, Any]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            return mock_data_service.get_device_stats(time_range)
         es = get_es_client()
         time_filter = build_time_range_filter(time_range)
         body = {
@@ -117,6 +130,9 @@ class AnalyticsService:
             return {"devices": [], "error": str(e)}
 
     async def get_severity_distribution(self, time_range: str = "24h") -> dict[str, Any]:
+        if ec.MOCK_MODE:
+            from app.services.mock_data_service import mock_data_service
+            return mock_data_service.get_severity_distribution(time_range)
         es = get_es_client()
         time_filter = build_time_range_filter(time_range)
         body = {

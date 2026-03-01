@@ -8,6 +8,9 @@ logger = logging.getLogger(__name__)
 
 _es_client: Optional[AsyncElasticsearch] = None
 
+# Set to True when Elasticsearch is not reachable
+MOCK_MODE: bool = False
+
 
 def get_es_client() -> AsyncElasticsearch:
     """Get or create Elasticsearch client."""
@@ -28,6 +31,20 @@ async def close_es_client() -> None:
     if _es_client is not None:
         await _es_client.close()
         _es_client = None
+
+
+async def check_es_connectivity() -> bool:
+    """Return True if Elasticsearch is reachable, False otherwise."""
+    global MOCK_MODE
+    es = get_es_client()
+    try:
+        await es.cluster.health(request_timeout=5)
+        MOCK_MODE = False
+        return True
+    except Exception as e:
+        logger.warning(f"Elasticsearch not available — running in mock data mode ({e})")
+        MOCK_MODE = True
+        return False
 
 
 async def check_es_health() -> dict[str, Any]:
