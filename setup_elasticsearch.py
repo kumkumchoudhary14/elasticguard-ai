@@ -93,27 +93,25 @@ async def create_anomalies_template(es: AsyncElasticsearch) -> None:
 async def create_ilm_policy(es: AsyncElasticsearch) -> None:
     """Create ILM policy for automatic index rollover."""
     policy = {
-        "policy": {
-            "phases": {
-                "hot": {
-                    "actions": {
-                        "rollover": {
-                            "max_size": "5gb",
-                            "max_age": "1d"
-                        }
+        "phases": {
+            "hot": {
+                "actions": {
+                    "rollover": {
+                        "max_size": "5gb",
+                        "max_age": "1d"
                     }
-                },
-                "warm": {
-                    "min_age": "7d",
-                    "actions": {
-                        "shrink": {"number_of_shards": 1},
-                        "forcemerge": {"max_num_segments": 1}
-                    }
-                },
-                "delete": {
-                    "min_age": "30d",
-                    "actions": {"delete": {}}
                 }
+            },
+            "warm": {
+                "min_age": "7d",
+                "actions": {
+                    "shrink": {"number_of_shards": 1},
+                    "forcemerge": {"max_num_segments": 1}
+                }
+            },
+            "delete": {
+                "min_age": "30d",
+                "actions": {"delete": {}}
             }
         }
     }
